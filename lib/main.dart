@@ -48,11 +48,32 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final controller = TextEditingController();
+  final String _orderBy = 'name';
+  bool _isDescending = false;
+  final _valores = ['A-Z', 'Z-A'];
 
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('Pessoas cadastradas'),
+      title: Row(
+        children: [
+          const Text('Pessoas cadastradas'),
+          DropdownButton(
+              items: _valores.map((String dropDownStringItem) {
+                return DropdownMenuItem<String>(
+                  value: dropDownStringItem,
+                  child: Text(dropDownStringItem),
+                );
+              }).toList(),
+              icon: const Icon(Icons.sort),
+              onChanged: (String? value){
+                setState(() {
+                  _isDescending = !_isDescending;
+                });
+              }
+          ),
+        ],
+      ),
     ),
     body: StreamBuilder<List<User>>(
         stream: readUsers(),
@@ -84,10 +105,13 @@ class _MyHomePageState extends State<MyHomePage> {
   );
 
   Widget buildUser(User user) => ListTile(
-    leading: CircleAvatar(
+    leading: SizedBox(
+      height: 50,
+        width: 50,
         child: Image.network(
           'https://firebasestorage.googleapis.com/v0/b/crud-firebase-92cba.appspot.com/o/profileImages%2F${user.name}-${user.profileImage}?alt=media',
-          fit: BoxFit.contain,
+          fit: BoxFit.fill,
+          scale: 0.5,
         ),
       /*Text('${user.age}')*/
     ),
@@ -106,12 +130,18 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           const SizedBox(width: 10),
           IconButton(
-            onPressed: (){
+            onPressed: () async {
               final docUser = FirebaseFirestore.instance
                   .collection('users')
                   .doc(user.id);
 
-                  docUser.delete();
+              docUser.update({
+                'isActive': false,
+              });
+
+              docUser.delete();
+              final ref = FirebaseStorage.instance.ref().child('profileImages/${user.name}-${user.profileImage}');
+              await ref.delete();
             },
             icon: const Icon(Icons.delete),
           ),
@@ -122,6 +152,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Stream<List<User>> readUsers() => FirebaseFirestore.instance
       .collection('users')
+      .orderBy(_orderBy, descending: _isDescending)
+      /*.where('isActive', isEqualTo: 'true')*/
       .snapshots()
       .map((snapshot) =>
         snapshot.docs.map((doc) => User.fromJson(doc.data())).toList());
@@ -135,7 +167,7 @@ class _MyHomePageState extends State<MyHomePage> {
         return null;
       }
 
-  Future createUser({required String name}) async {
+  /*Future createUser({required String name}) async {
     final docUser = FirebaseFirestore.instance.collection('users').doc();
 
     final user = User(
@@ -144,10 +176,11 @@ class _MyHomePageState extends State<MyHomePage> {
       age: 21,
       birthday: DateTime(2001, 7, 28),
       profileImage: '',
+      isActive: true,
     );
     final json = user.toJson();
     await docUser.set(json);
-  }
+  }*/
 }
 
   class User {
@@ -156,6 +189,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final int age;
     final DateTime birthday;
     final String profileImage;
+    final bool isActive;
 
     User({
       this.id = '',
@@ -163,6 +197,7 @@ class _MyHomePageState extends State<MyHomePage> {
       required this.age,
       required this.birthday,
       required this.profileImage,
+      required this.isActive,
     });
 
     Map<String, dynamic> toJson() => {
@@ -171,6 +206,7 @@ class _MyHomePageState extends State<MyHomePage> {
       'age': age,
       'birthday': birthday,
       'profileImage': profileImage,
+      'isActive': isActive,
     };
 
     static User fromJson(Map<String, dynamic> json) => User(
@@ -179,5 +215,6 @@ class _MyHomePageState extends State<MyHomePage> {
       age: json['age'],
       birthday: (json['birthday']).toDate(),
       profileImage: json['profileImage'],
+      isActive: json['isActive'],
     );
 }

@@ -98,6 +98,7 @@ class UserPageState extends State<UserPage> {
                   age: int.parse(controllerAge.text),
                   birthday: DateTime.parse(controllerDate.text),
                   profileImage: pickedFile!.name,
+                  isActive: true,
               );
 
               createUser(user);
